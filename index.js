@@ -18,17 +18,22 @@ admin.initializeApp({
 });
 
 const varefyFiebaseToken = async (req, res, next) => {
-  // console.log("authorization heders is ", req.headers?.authorization);
-  const token = req.headers.authorization;
-  if (!token) {
-    return res.status(401).send({ message: "unauthorization token" });
-  }
+  try {
+    const authHeader = req.headers.authorization;
 
-  const idToken = token.split(" ")[1];
-  const decoded = await admin.auth().verifyIdToken(idToken);
-  console.log("is token is varefy is ", decoded);
-  req.decoded_email = decoded.email;
-  next();
+    if (!authHeader) {
+      return res.status(401).send({ message: "Unauthorized" });
+    }
+
+    const idToken = authHeader.split(" ")[1];
+    const decoded = await admin.auth().verifyIdToken(idToken);
+
+    req.decoded_email = decoded.email;
+    next();
+  } catch (error) {
+    console.error("Firebase token error:", error.message);
+    return res.status(401).send({ message: "Token expired or invalid" });
+  }
 };
 
 app.get("/", (req, res) => {
@@ -99,12 +104,39 @@ async function run() {
     });
 
     // loan Application related aips
+
     app.post("/application", varefyFiebaseToken, async (req, res) => {
       // console.log(req.headers);
+      console.log(req.body);
       const newApplication = req.body;
-      newApplication.status = "Pending";
-      newApplication.ApplicationFeeStatus = "Unpaid";
+      newApplication.status = "pending";
+      newApplication.ApplicationFeeStatus = "unpaid";
+      newApplication.FromSubmitDate = new Date();
       const result = await applicationCollcation.insertOne(newApplication);
+      res.send(result);
+    });
+    app.patch("/aplication/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const update = {
+        $set: {
+          status: req.body.status,
+          approvedDate: new Date(),
+        },
+      };
+      const result = await applicationCollcation.updateOne(query, update);
+      res.send(result);
+    });
+    app.get("/pending_application", async (req, res) => {
+      const status = req.query.status; // Pending
+      const query = {};
+
+      if (status === status) {
+        query.status = status;
+      }
+
+      const cursor = applicationCollcation.find(query);
+      const result = await cursor.toArray();
       res.send(result);
     });
 
