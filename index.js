@@ -57,6 +57,29 @@ async function run() {
     const applicationCollcation = DB.collection("loanApplication");
     const userCollection = DB.collection("users");
 
+    // medual ware with database  access
+
+    const varefyAdmin = async (req, res, next) => {
+      const email = req.decoded_email;
+      const query = { email };
+      const user = await userCollection.findOne(query);
+      if (!user || user.role !== "admin") {
+        return res.status(403).send({ messaging: "forbident access" });
+      }
+
+      next();
+    };
+    const varefyManager = async (req, res, next) => {
+      const email = req.decoded_email;
+      const query = { email };
+      const user = await userCollection.findOne(query);
+      if (!user || user.role !== "manager") {
+        return res.status(403).send({ messaging: "forbident access" });
+      }
+
+      next();
+    };
+
     // user manage related apis
 
     app.post("/users", async (req, res) => {
@@ -75,7 +98,7 @@ async function run() {
       const result = await coursor.toArray();
       res.send(result);
     });
-    app.get("/users/:email/role", async (req, res) => {
+    app.get("/users/:email/role", varefyFiebaseToken, async (req, res) => {
       try {
         const email = req.params.email;
         const query = { email };
@@ -87,9 +110,9 @@ async function run() {
         res.status(500).send({ message: "Server Error" });
       }
     });
-    app.patch("/update_user/:id", async (req, res) => {
+    app.patch("/update_user/:id", varefyFiebaseToken, async (req, res) => {
       const id = req.params.id;
-      const updateRole = req.body;
+
       const query = { _id: new ObjectId(id) };
       const update = {
         $set: {
@@ -210,7 +233,15 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/microloan", async (req, res) => {
+    app.get("/myloan/:email", async (req, res) => {
+      const email = req.params.email;
+
+      const query = { UserEmail: email };
+
+      const result = await applicationCollcation.find(query).toArray();
+      res.send(result);
+    });
+    app.post("/microloan", varefyFiebaseToken, async (req, res) => {
       console.log(req.body);
       const newLoan = req.body;
       newLoan.date = new Date();
