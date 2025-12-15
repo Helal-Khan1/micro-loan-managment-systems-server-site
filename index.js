@@ -8,6 +8,7 @@ require("dotenv").config();
 // medilware
 app.use(cors());
 app.use(express.json());
+const stripe = require("stripe")(process.env.STRIP_SECRET_KEY);
 
 const admin = require("firebase-admin");
 
@@ -126,6 +127,41 @@ async function run() {
       res.send(result);
     });
 
+    // Prement chackout related apies
+
+    app.post("/create-checkout-session", async (req, res) => {
+      try {
+        const prementInfo = req.body;
+
+        const session = await stripe.checkout.sessions.create({
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: prementInfo.loanTitle,
+                },
+                unit_amount: prementInfo.payFree * 100,
+              },
+              quantity: 1,
+            },
+          ],
+          customer_email: prementInfo.costomer.email,
+          mode: "payment",
+          metadata: {
+            loanId: prementInfo.loanId,
+          },
+          success_url: `${process.env.CLINE_DOMIN}/deshbord/myloan`,
+          cancel_url: `${process.env.CLINE_DOMIN}/deshbord/myloan`,
+        });
+
+        res.json({ url: session.url });
+      } catch (error) {
+        console.error(error);
+        res.status(400).json({ message: error.message });
+      }
+    });
+
     // loan Application related aips
 
     app.post("/application", varefyFiebaseToken, async (req, res) => {
@@ -160,6 +196,13 @@ async function run() {
 
       const cursor = applicationCollcation.find(query);
       const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.delete("/application/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await applicationCollcation.deleteOne(query);
       res.send(result);
     });
 
@@ -201,6 +244,7 @@ async function run() {
     });
     app.delete("/delete_loan/:id", async (req, res) => {
       const id = req.params.id;
+      console.log(id);
       const query = { _id: new ObjectId(id) };
       const result = await loanCallaction.deleteOne(query);
       res.send(result);
