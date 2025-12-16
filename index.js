@@ -150,15 +150,36 @@ async function run() {
           mode: "payment",
           metadata: {
             loanId: prementInfo.loanId,
+            name: prementInfo.costomer.name,
           },
-          success_url: `${process.env.CLINE_DOMIN}/deshbord/myloan`,
-          cancel_url: `${process.env.CLINE_DOMIN}/deshbord/myloan`,
+          success_url: `http://localhost:5173/deshbord/myloan?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `http://localhost:5173/deshbord/myloan`,
         });
 
         res.json({ url: session.url });
       } catch (error) {
         console.error(error);
         res.status(400).json({ message: error.message });
+      }
+    });
+    app.post("/deshbord_myloan", async (req, res) => {
+      const { sessionId } = req.body;
+
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      if (session.payment_status === "paid") {
+        const orderInfo = {
+          transactionId: session.payment_intent,
+
+          applicationFree: session.amount_total / 100,
+        };
+        const query = { _id: new ObjectId(session.metadata.loanId) };
+        const updateDoc = {
+          $set: {
+            ApplicationFeeStatus: "paid",
+          },
+        };
+        await applicationCollcation.updateOne(query, updateDoc);
+        await paymentCollection.insertOne(orderInfo);
       }
     });
 
@@ -236,12 +257,25 @@ async function run() {
           interestRate: interestRate,
           maxLimit: maxLimit,
           emiPlans: emiPlans,
-          isHome: req.body.isHome,
         },
       };
       const result = await loanCallaction.updateOne(query, loanupdate);
       res.send(result);
     });
+
+    app.patch("/ishomeupdate/:id", async (req, res) => {
+      const { id } = req.params;
+      const { isHome } = req.body;
+      console.log(isHome);
+
+      const result = await loanCallaction.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { isHome } }
+      );
+
+      res.send(result);
+    });
+
     app.delete("/delete_loan/:id", async (req, res) => {
       const id = req.params.id;
       console.log(id);
@@ -250,7 +284,13 @@ async function run() {
       res.send(result);
     });
     app.get("/avilableloan", async (req, res) => {
-      const coursor = loanCallaction.find().limit(6);
+      const ishome = req.query.isHome;
+      console.log(" the ish home is ", ishome);
+      const quary = {};
+      if (ishome === "true") {
+        quary.isHome = true;
+      }
+      const coursor = loanCallaction.find(quary).limit(7);
       const restul = await coursor.toArray();
       res.send(restul);
     });
