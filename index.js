@@ -12,7 +12,14 @@ const stripe = require("stripe")(process.env.STRIP_SECRET_KEY);
 
 const admin = require("firebase-admin");
 
-const serviceAccount = require("./microloan-firebase-adminsdk.json");
+// const serviceAccount = require("./firebase-admin-key.json");
+
+// const serviceAccount = require("./firebase-admin-key.json");
+
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
+  "utf8"
+);
+const serviceAccount = JSON.parse(decoded);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -85,7 +92,7 @@ async function run() {
 
     app.post("/users", async (req, res) => {
       const newUser = req.body;
-      console.log(newUser);
+      // console.log(newUser);
       const query = { email: newUser.email };
       const existingUser = await userCollection.findOne(query);
       if (existingUser) {
@@ -164,22 +171,22 @@ async function run() {
     });
     app.post("/deshbord_myloan", async (req, res) => {
       const { sessionId } = req.body;
+      // console.log(sessionId);
 
       const session = await stripe.checkout.sessions.retrieve(sessionId);
+      // console.log(session)
       if (session.payment_status === "paid") {
-        const orderInfo = {
-          transactionId: session.payment_intent,
-
-          applicationFree: session.amount_total / 100,
-        };
         const query = { _id: new ObjectId(session.metadata.loanId) };
+        console.log(query);
         const updateDoc = {
           $set: {
             ApplicationFeeStatus: "paid",
+            transactionId: session.payment_intent,
+            paidAmount: session.amount_total / 100,
           },
         };
-        await applicationCollcation.updateOne(query, updateDoc);
-        await paymentCollection.insertOne(orderInfo);
+        const result = await applicationCollcation.updateOne(query, updateDoc);
+        res.send(result);
       }
     });
 
@@ -187,7 +194,7 @@ async function run() {
 
     app.post("/application", varefyFiebaseToken, async (req, res) => {
       // console.log(req.headers);
-      console.log(req.body);
+      // console.log(req.body);
       const newApplication = req.body;
       newApplication.status = "pending";
       newApplication.ApplicationFeeStatus = "unpaid";
@@ -236,7 +243,7 @@ async function run() {
     // All loan collection and related apis
     app.patch("/updateloan/:id", async (req, res) => {
       const id = req.params.id;
-      console.log(req.body);
+      // console.log(req.body);
       const {
         loanImage,
         loanTitle,
@@ -266,7 +273,7 @@ async function run() {
     app.patch("/ishomeupdate/:id", async (req, res) => {
       const { id } = req.params;
       const { isHome } = req.body;
-      console.log(isHome);
+      // console.log(isHome);
 
       const result = await loanCallaction.updateOne(
         { _id: new ObjectId(id) },
@@ -278,14 +285,14 @@ async function run() {
 
     app.delete("/delete_loan/:id", async (req, res) => {
       const id = req.params.id;
-      console.log(id);
+      // console.log(id);
       const query = { _id: new ObjectId(id) };
       const result = await loanCallaction.deleteOne(query);
       res.send(result);
     });
     app.get("/avilableloan", async (req, res) => {
       const ishome = req.query.isHome;
-      console.log(" the ish home is ", ishome);
+      // console.log(" the ish home is ", ishome);
       const quary = {};
       if (ishome === "true") {
         quary.isHome = true;
@@ -326,7 +333,7 @@ async function run() {
       res.send(result);
     });
     app.post("/microloan", varefyFiebaseToken, async (req, res) => {
-      console.log(req.body);
+      // console.log(req.body);
       const newLoan = req.body;
       newLoan.date = new Date();
 

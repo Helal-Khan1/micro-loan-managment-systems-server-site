@@ -1,3 +1,4 @@
 node_modules
 .env
 microloan-firebase-adminsdk.json
+.vercel
