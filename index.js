@@ -58,7 +58,7 @@ const client = new MongoClient(uri, {
 });
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
 
     const DB = client.db("microLoan");
     const loanCallaction = DB.collection("allLoan");
@@ -159,8 +159,8 @@ async function run() {
             loanId: prementInfo.loanId,
             name: prementInfo.costomer.name,
           },
-          success_url: `http://localhost:5173/deshbord/myloan?session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `http://localhost:5173/deshbord/myloan`,
+          success_url: `https://microloanserveses.vercel.app/deshbord/myloan?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `https://microloanserveses.vercel.app/deshbord/myloan`,
         });
 
         res.json({ url: session.url });
@@ -341,10 +341,10 @@ async function run() {
       res.send(result);
     });
 
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // await client.close();
   }
